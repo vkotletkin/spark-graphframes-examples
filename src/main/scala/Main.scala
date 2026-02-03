@@ -1,11 +1,8 @@
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-object SparkStableApp {
+object Main {
   def main(args: Array[String]): Unit = {
-
-    System.setProperty("hadoop.home.dir", "C:\\hadoop")
-
 
     val spark = SparkSession.builder()
       .appName("StableSparkApp")
@@ -29,6 +26,7 @@ object SparkStableApp {
         sum($"amount").as("total_amount")
       )
       .orderBy($"total_amount".desc) // сортировка
+
 
     // Вывод схемы и данных
     df.printSchema()
