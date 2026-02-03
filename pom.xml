@@ -40,7 +40,7 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
-<!--            <scope>provided</scope>-->
+            <!--            <scope>provided</scope>-->
         </dependency>
 
         <!-- Тестовые зависимости -->
@@ -50,6 +50,7 @@
             <version>3.2.17</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <build>
