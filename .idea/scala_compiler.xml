@@ -6,7 +6,8 @@
       <option name="uncheckedWarnings" value="true" />
       <option name="featureWarnings" value="true" />
       <parameters>
-        <parameter value="-Xfatal-warnings" />
+        <parameter value="-Xlint" />
+        <parameter value="-Ywarn-dead-code" />
       </parameters>
     </profile>
   </component>
