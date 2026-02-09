@@ -1,5 +1,5 @@
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
+import org.apache.spark.sql.functions.collect_list
 import org.graphframes.GraphFrame
 
 object Main {
@@ -12,72 +12,37 @@ object Main {
 
     import spark.implicits._
 
-    val v = spark.createDataFrame((0L until 30L).map(id => (id, s"v$id"))).toDF("id", "name")
+    //    val v = Seq(
+    //      ("email:ivan@mail.ru", "email"),
+    //      ("cookie:abc123", "cookie"),
+    //      ("phone:7999123", "phone"),
+    //      ("user_id:555", "internal_id"),
+    //      ("email:petr@mail.ru", "email"),
+    //      ("cookie:xyz789", "cookie")
+    //    ).toDF("id", "type")
 
-    // Build edges to create a hierarchical structure:
-    // Core (k=5): vertices 0-4 - fully connected
-    // Next layer (k=3): vertices 5-14 - each connects to multiple core vertices
-    // Outer layer (k=1): vertices 15-29 - sparse connections
-    val coreEdges = for {
-      i <- 0 until 5
-      j <- (i + 1) until 5
-    } yield (i.toLong, j.toLong)
 
-    val midLayerEdges = Seq(
-      (5L, 0L),
-      (5L, 1L),
-      (5L, 2L), // Connect to core
-      (6L, 0L),
-      (6L, 1L),
-      (6L, 3L),
-      (7L, 1L),
-      (7L, 2L),
-      (7L, 4L),
-      (8L, 0L),
-      (8L, 3L),
-      (8L, 4L),
-      (9L, 1L),
-      (9L, 2L),
-      (9L, 3L),
-      (10L, 0L),
-      (10L, 4L),
-      (11L, 2L),
-      (11L, 3L),
-      (12L, 1L),
-      (12L, 4L),
-      (13L, 0L),
-      (13L, 2L),
-      (14L, 3L),
-      (14L, 4L))
+    val e = Seq(
+      ("ivan@mail.ru", "abc123"), // Иван зашел с кукой abc
+      ("abc123", "7999123"), // С этой же куки подтвердили телефон
+      ("7999123", "555"), // Телефон привязан к профилю 555
+      ("petr@mail.ru", "xyz789") // Петр использует свои девайсы
+    ).toDF("src", "dst")
 
-    val outerEdges = Seq(
-      (15L, 5L),
-      (16L, 6L),
-      (17L, 7L),
-      (18L, 8L),
-      (19L, 9L),
-      (20L, 10L),
-      (21L, 11L),
-      (22L, 12L),
-      (23L, 13L),
-      (24L, 14L),
-      (25L, 15L),
-      (26L, 16L),
-      (27L, 17L),
-      (28L, 18L),
-      (29L, 19L))
+    val v = e.select($"src".as("id")).union(e.select($"dst".as("id"))).distinct()
 
-    val allEdges = coreEdges ++ midLayerEdges ++ outerEdges
-
-    val e = spark.createDataFrame(allEdges).toDF("src", "dst")
     val g = GraphFrame(v, e)
-    val result = g.kCore
-      .setCheckpointInterval(5)
+
+    val components = g.connectedComponents
       .setUseLocalCheckpoints(true)
-      .setIntermediateStorageLevel(StorageLevel.MEMORY_AND_DISK)
       .run()
 
-    val coreOnly = result.filter($"kcore" > 5)
-    coreOnly.show()
+    val groupped = components.groupBy("component")
+      .agg(
+        collect_list($"id").as("all_identifiers")
+      )
+
+    groupped.show(false)
+
   }
 }
