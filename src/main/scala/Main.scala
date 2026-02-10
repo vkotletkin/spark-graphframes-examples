@@ -128,7 +128,7 @@ object Main extends LazyLogging {
     val driver = "org.postgresql.Driver"
     props.put("driver", driver)
 
-    props.put("fetchSize", "10000")
+    props.put("fetchSize", "50000")
     props.put("socketTimeout", "300000")
 
     //    // Формируем SQL вызов хранимой процедуры
