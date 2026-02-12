@@ -1,5 +1,5 @@
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{broadcast, collect_list}
+import org.apache.spark.sql.functions._
 import org.graphframes.GraphFrame
 
 object ConnectedComponents {
@@ -14,9 +14,8 @@ object ConnectedComponents {
 
     val targetIds = Seq("8911111", "8933333", "IMSI_A")
     val targetsDF = targetIds.toDF("target_id")
-    val targets = targetIds.toDF("id")
 
-    // 1. Создаем тестовые данные (Edges) - имитация 1 млн строк
+
     val edges = spark.createDataFrame(Seq(
       ("8911111", "IMEI_1"),
       ("IMEI_1", "8922222"), // Цепочка 1 (Phone -> IMEI -> Phone)
@@ -37,19 +36,16 @@ object ConnectedComponents {
     val cc = g.connectedComponents.setUseLocalCheckpoints(true).run().cache()
 
     // взяли components с нашими id
-    val componentsOfInterest = cc.join(broadcast(targets), "id")
-      .select("component").distinct()
+    val ccWithTarget = cc.join(broadcast(targetsDF), cc("id") === targetsDF("target_id"), "left_outer")
+      .select("component", "id", "target_id") // нашли нужные нам компоненты
 
-    // взяли target_ids от них
-    val componentWithTargets = cc.join(broadcast(targetsDF), cc("id") === targetsDF("target_id"))
-      .groupBy("component")
-      .agg(collect_list("target_id").as("targets_in_component"))
+    val aggregated = ccWithTarget.groupBy("component")
+      .agg(
+        array_sort(collect_list("id")).as("full_chain"), // массив строк — все вершины, отсортированы
+        collect_set("target_id").as("targets_in_component") // массив строк — уникальные target-ы
+      )
+      .filter(size(col("targets_in_component")) > 0)
 
-    val result = cc.join(componentsOfInterest, "component")
-      .groupBy("component")
-      .agg(collect_list("id").as("full_chain"))
-      .join(componentWithTargets, Seq("component"), "left")
-
-    result.show(false)
+    aggregated.show(false)
   }
 }
